@@ -11,6 +11,7 @@
 use serenity::framework::standard::{BucketBuilder, Configuration, StandardFramework};
 use serenity::http::Http;
 use std::env;
+use dotenv::dotenv;
 
 mod commands;
 
@@ -18,6 +19,8 @@ use commands::*;
 
 #[tokio::main]
 async fn main() {
+    dotenv().ok(); // load the .env file into the program
+
     // Configure the client with your Discord bot token in the environment.
     let token = env::var("DISCORD_TOKEN").expect("Expected a token in the environment");
 
