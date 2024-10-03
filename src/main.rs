@@ -8,10 +8,10 @@
 //! features = ["framework", "standard_framework"]
 //! ```
 #![allow(deprecated)]
+use dotenv::dotenv;
 use serenity::framework::standard::{BucketBuilder, Configuration, StandardFramework};
 use serenity::http::Http;
 use std::env;
-use dotenv::dotenv;
 
 mod commands;
 
@@ -66,6 +66,8 @@ async fn main() {
         // reason or another. For example, when a user has exceeded a rate-limit or a command can
         // only be performed by the bot owner.
         .on_dispatch_error(dispatch_error)
+        .bucket("pic", BucketBuilder::default().delay(5))
+        .await
         // Can't be used more than once per 5 seconds:
         .bucket("emoji", BucketBuilder::default().delay(5))
         .await
@@ -92,7 +94,8 @@ async fn main() {
         // #name is turned all uppercase
         .help(&MY_HELP)
         .group(&GENERAL_GROUP)
-        .group(&EMOJI_GROUP);
+        .group(&EMOJI_GROUP)
+        .group(&PIC_GROUP);
 
     framework.configure(
         Configuration::new()

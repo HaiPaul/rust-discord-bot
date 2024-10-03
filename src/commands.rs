@@ -1,4 +1,5 @@
 #![allow(deprecated)] // We recommend migrating to poise, instead of using the standard command framework.
+use rand::Rng;
 use serenity::async_trait;
 use serenity::framework::standard::{
     help_commands, Args, CommandGroup, CommandResult, DispatchError, HelpOptions,
@@ -6,11 +7,11 @@ use serenity::framework::standard::{
 use serenity::gateway::ShardManager;
 use serenity::model::channel::Message;
 use serenity::model::gateway::Ready;
-use serenity::model::id::UserId;
+use serenity::model::id::{ChannelId, UserId};
 use serenity::utils::{content_safe, ContentSafeOptions};
 use std::fmt::Write;
 
-pub use serenity::framework::standard::buckets::{LimitedFor, RevertBucket};
+pub use serenity::framework::standard::buckets::LimitedFor;
 pub use serenity::framework::standard::macros::{command, group, help, hook};
 pub use serenity::prelude::*;
 pub use std::collections::{HashMap, HashSet};
@@ -38,13 +39,18 @@ impl EventHandler for Handler {
 }
 
 #[group]
-#[commands(say, commands)]
+#[commands(say, commands, pov, zitat)]
 pub struct General;
 
 #[group]
 #[prefixes("emoji")]
 #[commands(cat, dog)]
 pub struct Emoji;
+
+#[group]
+#[prefixes("pic")]
+#[commands(bird)]
+pub struct Pic;
 
 #[help]
 #[individual_command_tip = "Hello! こんにちは！Hola! Bonjour! 您好! 안녕하세요~\n\n\
@@ -213,13 +219,10 @@ async fn vallah(ctx: &Context, msg: &Message) -> CommandResult {
 #[aliases("kitty", "neko")]
 // Make this command use the "emoji" bucket.
 #[bucket = "emoji"]
-// Allow only administrators to call this:
-#[required_permissions("ADMINISTRATOR")]
 async fn cat(ctx: &Context, msg: &Message) -> CommandResult {
     msg.channel_id.say(&ctx.http, ":cat:").await?;
 
-    // We can return one ticket to the bucket undoing the ratelimit.
-    Err(RevertBucket.into())
+    Ok(())
 }
 
 #[command]
@@ -232,14 +235,58 @@ async fn dog(ctx: &Context, msg: &Message) -> CommandResult {
 }
 
 #[command]
-async fn bird(ctx: &Context, msg: &Message, args: Args) -> CommandResult {
-    let say_content = if args.is_empty() {
-        ":bird: can find animals for you.".to_string()
-    } else {
-        format!(":bird: could not find animal named: `{}`.", args.rest())
+#[bucket = "pic"]
+async fn bird(ctx: &Context, msg: &Message) -> CommandResult {
+    let rng = rand::thread_rng().gen_range(1..=2);
+    let path = format!("images/bird{}.jpg", rng);
+    let f = &tokio::fs::File::open(path).await?;
+    let attachment = serenity::all::CreateAttachment::file(f, format!("bird{}.jpg", rng)).await?;
+    let _ = match msg
+        .channel_id
+        .send_message(
+            &ctx.http,
+            serenity::all::CreateMessage::new().add_file(attachment),
+        )
+        .await
+    {
+        Ok(_) => Ok(()),
+        Err(why) => Err(serenity::all::standard::CommandError::from(why)),
     };
+    Ok(())
+}
 
-    msg.channel_id.say(&ctx.http, say_content).await?;
+#[command]
+async fn pov(ctx: &Context, msg: &Message) -> CommandResult {
+    let rng = rand::thread_rng().gen_range(1..=3);
+    let path = format!("images/pov{}.jpg", rng);
+    let f = &tokio::fs::File::open(path).await?;
+    let attachment = serenity::all::CreateAttachment::file(f, format!("pov{}.jpg", rng)).await?;
+    let _ = match msg
+        .channel_id
+        .send_message(
+            &ctx.http,
+            serenity::all::CreateMessage::new().add_file(attachment),
+        )
+        .await
+    {
+        Ok(_) => Ok(()),
+        Err(why) => Err(serenity::all::standard::CommandError::from(why)),
+    };
+    Ok(())
+}
+
+#[command]
+async fn zitat(ctx: &Context, msg: &Message) -> CommandResult {
+    let zitate_channel_id = ChannelId::new(1290616138308386816);
+
+    let message = &msg.content;
+
+    let f = message.find(' ');
+
+    match f {
+        Some(f) => zitate_channel_id.say(&ctx.http, message.clone().split_off(f)).await?,
+        None => msg.channel_id.say(&ctx.http, "You need to add a zitat!").await?
+    };
 
     Ok(())
 }
