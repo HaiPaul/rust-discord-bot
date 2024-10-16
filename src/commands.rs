@@ -1,5 +1,6 @@
 #![allow(deprecated)] // We recommend migrating to poise, instead of using the standard command framework.
 use rand::Rng;
+use serde::{Deserialize, Serialize};
 use serenity::async_trait;
 use serenity::framework::standard::{
     help_commands, Args, CommandGroup, CommandResult, DispatchError, HelpOptions,
@@ -9,6 +10,7 @@ use serenity::model::channel::Message;
 use serenity::model::gateway::Ready;
 use serenity::model::id::{ChannelId, UserId};
 use serenity::utils::{content_safe, ContentSafeOptions};
+use std::env;
 use std::fmt::Write;
 
 pub use serenity::framework::standard::buckets::LimitedFor;
@@ -39,7 +41,7 @@ impl EventHandler for Handler {
 }
 
 #[group]
-#[commands(say, commands, pov, zitat)]
+#[commands(say, commands, pov, zitat, weather)]
 pub struct General;
 
 #[group]
@@ -284,9 +286,201 @@ async fn zitat(ctx: &Context, msg: &Message) -> CommandResult {
     let f = message.find(' ');
 
     match f {
-        Some(f) => zitate_channel_id.say(&ctx.http, message.clone().split_off(f)).await?,
-        None => msg.channel_id.say(&ctx.http, "You need to add a zitat!").await?
+        Some(f) => {
+            zitate_channel_id
+                .say(&ctx.http, message.clone().split_off(f))
+                .await?
+        }
+        None => {
+            msg.channel_id
+                .say(&ctx.http, "You need to add a zitat!")
+                .await?
+        }
     };
+
+    Ok(())
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+struct Coord {
+    lon: f64,
+    lat: f64,
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+struct Weather {
+    id: u32,
+    main: String,
+    description: String,
+    icon: String,
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+struct Main {
+    temp: f64,
+    feels_like: f64,
+    temp_min: f64,
+    temp_max: f64,
+    pressure: u32,
+    humidity: u32,
+    sea_level: Option<u32>,
+    grnd_level: Option<u32>,
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+struct Wind {
+    speed: f64,
+    deg: u32,
+    gust: Option<f64>,
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+struct Rain {
+    #[serde(rename = "1h")]
+    one_hour: Option<f64>,
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+struct Clouds {
+    all: u32,
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+struct Sys {
+    r#type: u32,
+    id: u32,
+    country: String,
+    sunrise: u64,
+    sunset: u64,
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+struct WeatherData {
+    coord: Coord,
+    weather: Vec<Weather>,
+    base: String,
+    main: Main,
+    visibility: u32,
+    wind: Wind,
+    rain: Option<Rain>,
+    clouds: Clouds,
+    dt: u64,
+    sys: Sys,
+    timezone: i32,
+    id: u64,
+    name: String,
+    cod: u32,
+}
+
+#[command]
+#[sub_commands(details)]
+async fn weather(ctx: &Context, msg: &Message, mut args: Args) -> CommandResult {
+    let location = match args.single::<String>() {
+        Ok(location) => location,
+        Err(_) => {
+            msg.reply(ctx, "You need to provide a location!").await?;
+            return Err("No location supplied".into());
+        }
+    };
+
+    let api_key = env::var("WEATHER_API_KEY").expect("Expected a token in the environment");
+
+    let url = format!(
+        "https://api.openweathermap.org/data/2.5/weather?q={}&appid={}&units=metric",
+        location, api_key
+    );
+
+    let response = reqwest::get(&url).await?.text().await?;
+
+    let weather: WeatherData = match serde_json::from_str(&response) {
+        Ok(weather) => weather,
+        Err(_) => {
+            msg.reply(ctx, "Failed to parse weather data!").await?;
+            return Err("Parsing error".into());
+        }
+    };
+
+    let description = match weather.weather[0].description.as_str() {
+        "clear sky" => "The sky is clear, and the weather is perfect for any activity",
+        "few clouds" => "A few clouds are scattered, but the sky is still clear",
+        "scattered clouds" => "Clouds are scattered, but the sky is still clear",
+        "broken clouds" => "Clouds are broken, but the sky is still clear",
+        "shower rain" => "It's raining, but not too much, and it's perfect for a walk",
+        "rain" => "It's raining, and you should stay indoors and play videogames",
+        "thunderstorm" => "It's a thunderstorm, which is perfect for a stroll",
+        "snow" => "It's snowing, and you should stay indoors and enjoy your snowy day",
+        "mist" => "It's a mist, which is perfect for a walk",
+        _ => "I'm not sure what the weather is like in this location, but it's always good to check outside",
+    };
+
+    msg.reply(ctx, description).await?;
+    Ok(())
+}
+
+#[command]
+async fn details(ctx: &Context, msg: &Message, mut args: Args) -> CommandResult {
+    let api_key = env::var("WEATHER_API_KEY").expect("Expected a token in the environment");
+
+    let location = match args.single::<String>() {
+        Ok(location) => location,
+        Err(_) => {
+            msg.reply(ctx, "You need to provide a location!").await?;
+            return Err("No location supplied".into());
+        }
+    };
+
+    let url = format!(
+        "https://api.openweathermap.org/data/2.5/weather?q={}&appid={}&units=metric",
+        location, api_key
+    );
+
+    let response = reqwest::get(&url).await?.text().await?;
+
+    let weather: WeatherData = match serde_json::from_str(&response) {
+        Ok(weather) => weather,
+        Err(_) => {
+            msg.reply(ctx, "Failed to parse weather data!").await?;
+            return Err("Parsing error".into());
+        }
+    };
+
+    let temp = format!("{:.1}°C", weather.main.temp);
+    let feels_like = format!("{:.1}°C", weather.main.feels_like);
+    let humidity = format!("{}%", weather.main.humidity);
+    let wind_speed = format!("{:.1} m/s", weather.wind.speed);
+    let rain = match weather.rain {
+        Some(_) => format!("{:.1} m/s", weather.rain.unwrap().one_hour.unwrap()),
+        None => "No rain".to_string(),
+    };
+    let description = weather.weather[0].description.clone();
+    let sunrise = format!(
+        "{:02}:{:02}:{:02}",
+        (weather.sys.sunrise / 3600) % 24,
+        (weather.sys.sunrise / 60) % 60,
+        weather.sys.sunrise % 60
+    );
+    let sunset = format!(
+        "{:02}:{:02}:{:02}",
+        (weather.sys.sunset / 3600) % 24,
+        (weather.sys.sunset / 60) % 60,
+        weather.sys.sunset % 60
+    );
+
+    msg.reply(
+        ctx,
+        format!(
+            "Temperature: {:}
+It feels like: {:}
+Humidity: {:}
+Wind speed: {:}
+Rain?: {:}
+Description: {:}
+Sunrise: {:}
+Sunset: {:}",
+            temp, feels_like, humidity, wind_speed, rain, description, sunrise, sunset
+        ),
+    )
+    .await?;
 
     Ok(())
 }
