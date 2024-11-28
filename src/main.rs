@@ -13,9 +13,15 @@ use serenity::framework::standard::{BucketBuilder, Configuration, StandardFramew
 use serenity::http::Http;
 use std::env;
 
-mod commands;
+mod command_base;
+mod emoji_commands;
+mod general_commands;
+mod picture_commands;
 
-use commands::*;
+use command_base::*;
+use emoji_commands::*;
+use general_commands::*;
+use picture_commands::*;
 
 #[tokio::main]
 async fn main() {
@@ -101,7 +107,7 @@ async fn main() {
         Configuration::new()
             .with_whitespace(true)
             .on_mention(Some(bot_id))
-            .prefix("#")
+            .prefix("?")
             // In this case, if "," would be first, a message would never be delimited at ", ",
             // forcing you to trim your arguments if you want to avoid whitespaces at the start of
             // each.
