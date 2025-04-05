@@ -2,7 +2,7 @@ use crate::command_base::*;
 
 #[group]
 #[prefixes("pic")]
-#[commands(bird, pov, demi)]
+#[commands(bird, pov, demi, bimbo)]
 pub struct Pic;
 
 #[command]
@@ -52,7 +52,6 @@ async fn pov(ctx: &Context, msg: &Message) -> CommandResult {
 async fn demi(ctx: &Context, msg: &Message) -> CommandResult {
     let rng = rand::thread_rng().gen_range(1..=4);
     let path = format!("images/demi{}.jpg", rng);
-    println!("{}", path);
     let f = &tokio::fs::File::open(path).await?;
     let attachment = serenity::all::CreateAttachment::file(f, format!("demi{}.jpg", rng)).await?;
     let _ = match msg
@@ -67,4 +66,31 @@ async fn demi(ctx: &Context, msg: &Message) -> CommandResult {
         Err(why) => Err(serenity::all::standard::CommandError::from(why)),
     };
     Ok(())
+}
+
+#[command]
+#[bucket = "pic"]
+async fn bimbo(ctx: &Context, msg: &Message) -> CommandResult {
+    let demi_rng = rand::thread_rng().gen_range(0..=100);
+    if demi_rng < 90 {
+        let rng = rand::thread_rng().gen_range(1..=1);
+        let path = format!("images/bimbo{}.jpg", rng);
+        let f = &tokio::fs::File::open(path).await?;
+        let attachment =
+            serenity::all::CreateAttachment::file(f, format!("bimbo{}.jpg", rng)).await?;
+        let _ = match msg
+            .channel_id
+            .send_message(
+                &ctx.http,
+                serenity::all::CreateMessage::new().add_file(attachment),
+            )
+            .await
+        {
+            Ok(_) => Ok(()),
+            Err(why) => Err(serenity::all::standard::CommandError::from(why)),
+        };
+        Ok(())
+    } else {
+        demi(ctx, msg, _args).await
+    }
 }

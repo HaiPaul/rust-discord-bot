@@ -5,7 +5,7 @@ use serenity::utils::{content_safe, ContentSafeOptions};
 use std::fmt::Write;
 
 #[group]
-#[commands(say, commands, zitat, roll)]
+#[commands(say, commands, roll)]
 pub struct General;
 
 // Commands can be created via the attribute `#[command]` macro.
@@ -86,6 +86,9 @@ async fn zitat(ctx: &Context, msg: &Message) -> CommandResult {
         Some(f) => {
             zitate_channel_id
                 .say(&ctx.http, message.clone().split_off(f))
+                .await?;
+            msg.channel_id
+                .say(&ctx.http, "Zitat posted in <#1290616138308386816>!")
                 .await?
         }
         None => {

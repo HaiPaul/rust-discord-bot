@@ -17,11 +17,14 @@ mod command_base;
 mod emoji_commands;
 mod general_commands;
 mod picture_commands;
+mod pepito;
+mod moderator_commands;
 
 use command_base::*;
 use emoji_commands::*;
 use general_commands::*;
 use picture_commands::*;
+use moderator_commands::*;
 
 #[tokio::main]
 async fn main() {
@@ -77,6 +80,8 @@ async fn main() {
         // Can't be used more than once per 5 seconds:
         .bucket("emoji", BucketBuilder::default().delay(5))
         .await
+        .bucket("mod", BucketBuilder::default().delay(5))
+        .await
         // Can't be used more than 2 times per 30 seconds, with a 5 second delay applying per
         // channel. Optionally `await_ratelimits` will delay until the command can be executed
         // instead of cancelling the command invocation.
@@ -101,7 +106,8 @@ async fn main() {
         .help(&MY_HELP)
         .group(&GENERAL_GROUP)
         .group(&EMOJI_GROUP)
-        .group(&PIC_GROUP);
+        .group(&PIC_GROUP)
+        .group(&MOD_GROUP);
 
     framework.configure(
         Configuration::new()
