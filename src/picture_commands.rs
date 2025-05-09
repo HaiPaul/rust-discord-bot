@@ -5,13 +5,16 @@ use crate::command_base::*;
 #[commands(bird, pov, demi, bimbo, ösi)]
 pub struct Pic;
 
-#[command]
-#[bucket = "pic"]
-async fn bird(ctx: &Context, msg: &Message) -> CommandResult {
-    let rng = rand::thread_rng().gen_range(1..=2);
-    let path = format!("images/bird{}.jpg", rng);
+async fn base_picture_command(
+    ctx: &Context,
+    msg: &Message,
+    file_name: &str,
+    file_count: u8,
+) -> CommandResult {
+    let rng = rand::thread_rng().gen_range(1..=file_count);
+    let path = format!("images/{}{}.jpg", file_name, rng);
     let f = &tokio::fs::File::open(path).await?;
-    let attachment = serenity::all::CreateAttachment::file(f, format!("bird{}.jpg", rng)).await?;
+    let attachment = serenity::all::CreateAttachment::file(f, format!("{}{}.jpg", file_name, rng)).await?;
     let _ = match msg
         .channel_id
         .send_message(
@@ -24,48 +27,24 @@ async fn bird(ctx: &Context, msg: &Message) -> CommandResult {
         Err(why) => Err(serenity::all::standard::CommandError::from(why)),
     };
     Ok(())
+}
+
+#[command]
+#[bucket = "pic"]
+async fn bird(ctx: &Context, msg: &Message) -> CommandResult {
+    base_picture_command(ctx, msg, "bird", 2).await
 }
 
 #[command]
 #[bucket = "pic"]
 async fn pov(ctx: &Context, msg: &Message) -> CommandResult {
-    let rng = rand::thread_rng().gen_range(1..=3);
-    let path = format!("images/pov{}.jpg", rng);
-    let f = &tokio::fs::File::open(path).await?;
-    let attachment = serenity::all::CreateAttachment::file(f, format!("pov{}.jpg", rng)).await?;
-    let _ = match msg
-        .channel_id
-        .send_message(
-            &ctx.http,
-            serenity::all::CreateMessage::new().add_file(attachment),
-        )
-        .await
-    {
-        Ok(_) => Ok(()),
-        Err(why) => Err(serenity::all::standard::CommandError::from(why)),
-    };
-    Ok(())
+    base_picture_command(ctx, msg, "pov", 3).await
 }
 
 #[command]
 #[bucket = "pic"]
 async fn demi(ctx: &Context, msg: &Message) -> CommandResult {
-    let rng = rand::thread_rng().gen_range(1..=4);
-    let path = format!("images/demi{}.jpg", rng);
-    let f = &tokio::fs::File::open(path).await?;
-    let attachment = serenity::all::CreateAttachment::file(f, format!("demi{}.jpg", rng)).await?;
-    let _ = match msg
-        .channel_id
-        .send_message(
-            &ctx.http,
-            serenity::all::CreateMessage::new().add_file(attachment),
-        )
-        .await
-    {
-        Ok(_) => Ok(()),
-        Err(why) => Err(serenity::all::standard::CommandError::from(why)),
-    };
-    Ok(())
+    base_picture_command(ctx, msg, "demi", 4).await
 }
 
 #[command]
@@ -73,23 +52,7 @@ async fn demi(ctx: &Context, msg: &Message) -> CommandResult {
 async fn bimbo(ctx: &Context, msg: &Message) -> CommandResult {
     let demi_rng = rand::thread_rng().gen_range(0..=100);
     if demi_rng < 90 {
-        let rng = rand::thread_rng().gen_range(1..=1);
-        let path = format!("images/bimbo{}.jpg", rng);
-        let f = &tokio::fs::File::open(path).await?;
-        let attachment =
-            serenity::all::CreateAttachment::file(f, format!("bimbo{}.jpg", rng)).await?;
-        let _ = match msg
-            .channel_id
-            .send_message(
-                &ctx.http,
-                serenity::all::CreateMessage::new().add_file(attachment),
-            )
-            .await
-        {
-            Ok(_) => Ok(()),
-            Err(why) => Err(serenity::all::standard::CommandError::from(why)),
-        };
-        Ok(())
+        base_picture_command(ctx, msg, "bimbo", 1).await
     } else {
         demi(ctx, msg, _args).await
     }
@@ -98,21 +61,5 @@ async fn bimbo(ctx: &Context, msg: &Message) -> CommandResult {
 #[command]
 #[bucket = "pic"]
 async fn ösi(ctx: &Context, msg: &Message) -> CommandResult {
-    let ösi_rng = rand::thread_rng().gen_range(1..=4);
-    let path = format!("images/ösi{}.jpg", ösi_rng);
-    let f = &tokio::fs::File::open(path).await?;
-    let attachment =
-        serenity::all::CreateAttachment::file(f, format!("ösi{}.jpg", ösi_rng)).await?;
-    let _ = match msg
-        .channel_id
-        .send_message(
-            &ctx.http,
-            serenity::all::CreateMessage::new().add_file(attachment),
-        )
-        .await
-    {
-        Ok(_) => Ok(()),
-        Err(why) => Err(serenity::all::standard::CommandError::from(why)),
-    };
-    Ok(())
+    base_picture_command(ctx, msg, "ösi", 4).await
 }
