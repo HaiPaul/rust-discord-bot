@@ -17,7 +17,6 @@ mod command_base;
 mod emoji_commands;
 mod general_commands;
 mod picture_commands;
-mod pepito;
 mod moderator_commands;
 
 use command_base::*;

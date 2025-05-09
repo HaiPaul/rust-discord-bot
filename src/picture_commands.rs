@@ -2,7 +2,7 @@ use crate::command_base::*;
 
 #[group]
 #[prefixes("pic")]
-#[commands(bird, pov, demi, bimbo)]
+#[commands(bird, pov, demi, bimbo, ösi)]
 pub struct Pic;
 
 #[command]
@@ -93,4 +93,26 @@ async fn bimbo(ctx: &Context, msg: &Message) -> CommandResult {
     } else {
         demi(ctx, msg, _args).await
     }
+}
+
+#[command]
+#[bucket = "pic"]
+async fn ösi(ctx: &Context, msg: &Message) -> CommandResult {
+    let ösi_rng = rand::thread_rng().gen_range(1..=4);
+    let path = format!("images/ösi{}.jpg", ösi_rng);
+    let f = &tokio::fs::File::open(path).await?;
+    let attachment =
+        serenity::all::CreateAttachment::file(f, format!("ösi{}.jpg", ösi_rng)).await?;
+    let _ = match msg
+        .channel_id
+        .send_message(
+            &ctx.http,
+            serenity::all::CreateMessage::new().add_file(attachment),
+        )
+        .await
+    {
+        Ok(_) => Ok(()),
+        Err(why) => Err(serenity::all::standard::CommandError::from(why)),
+    };
+    Ok(())
 }
