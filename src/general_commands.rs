@@ -1,11 +1,13 @@
 use crate::command_base::*;
 
+use rand::seq::IteratorRandom;
+use serenity::futures::StreamExt;
 use serenity::model::id::ChannelId;
 use serenity::utils::{content_safe, ContentSafeOptions};
 use std::fmt::Write;
 
 #[group]
-#[commands(say, commands, roll)]
+#[commands(say, commands, roll, meme)]
 pub struct General;
 
 // Commands can be created via the attribute `#[command]` macro.
@@ -114,5 +116,30 @@ async fn roll(ctx: &Context, msg: &Message, mut args: Args) -> CommandResult {
     let result = rand::thread_rng().gen_range(1..=roll);
 
     msg.reply(ctx, format!("You rolled a {}!", result)).await?;
+    Ok(())
+}
+
+#[command]
+async fn meme(ctx: &Context, msg: &Message) -> CommandResult {
+    let channel_id = ChannelId::new(1121506848240046251);
+
+    let memes = channel_id.messages_iter(&ctx.http).take(100).collect::<Vec<_>>().await;
+
+    let meme = memes
+        .into_iter()
+        .filter_map(|m| m.ok())
+        .filter(|m| !m.attachments.is_empty())
+        .choose(&mut rand::thread_rng());
+    
+    match meme {
+        Some(m) => {
+            let attachment = &m.attachments[0];
+            msg.channel_id.say(&ctx.http, &attachment.url).await?;
+        }
+        None => {
+            msg.channel_id.say(&ctx.http, "No memes found!").await?;
+        }
+    }
+
     Ok(())
 }
