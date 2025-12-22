@@ -1,4 +1,5 @@
 /target
+/warnings
 
 .env
 feature_requests.md
