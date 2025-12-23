@@ -186,7 +186,15 @@ async fn checkwarns(ctx: &Context, msg: &Message, mut args: Args) -> CommandResu
         None => String::from("Unknown_user"),
     };
     let path = format!("warnings/{}txt", username);
-    let content = tokio::fs::read_to_string(&path).await?;
+    let content = match tokio::fs::read_to_string(&path).await {
+        Ok(content) => content,
+        Err(_) => {
+            msg.channel_id
+                .say(&ctx.http, format!("<@{}> has no warnings.", user))
+                .await?;
+            return Ok(());
+        }
+    };
     let warnings = content.lines().map(|line| line.to_string()).collect::<Vec<String>>();
     if warnings.is_empty() {
         msg.channel_id
